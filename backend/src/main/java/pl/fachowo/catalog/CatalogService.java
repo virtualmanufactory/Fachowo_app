@@ -16,6 +16,7 @@ import pl.fachowo.company.ServiceOffer;
 import pl.fachowo.company.ServiceOfferRepository;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -46,21 +47,21 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable("categories")
+    @Cacheable(value = "categories", unless = "#result == null || #result.isEmpty()")
     public List<CategoryDto> categories() {
-        return categoryRepository.findAll().stream()
+        return new ArrayList<>(categoryRepository.findAll().stream()
                 .sorted(Comparator.comparing(Category::getName))
                 .map(c -> new CategoryDto(c.getId(), c.getSlug(), c.getName()))
-                .toList();
+                .toList());
     }
 
     @Transactional(readOnly = true)
-    @Cacheable("voivodeships")
+    @Cacheable(value = "voivodeships", unless = "#result == null || #result.isEmpty()")
     public List<VoivodeshipDto> voivodeships() {
-        return voivodeshipRepository.findAll().stream()
+        return new ArrayList<>(voivodeshipRepository.findAll().stream()
                 .sorted(Comparator.comparing(Voivodeship::getName))
                 .map(v -> new VoivodeshipDto(v.getId(), v.getSlug(), v.getName()))
-                .toList();
+                .toList());
     }
 
     @Transactional(readOnly = true)

@@ -64,6 +64,6 @@ class AuthIT extends AbstractIT {
 
     @Test
     void meRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/api/me")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/me")).andExpect(status().isUnauthorized());
     }
 }

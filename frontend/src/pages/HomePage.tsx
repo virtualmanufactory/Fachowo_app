@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { Category } from '../api/types'
 
 export function HomePage() {
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isError, refetch } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => (await api.get<Category[]>('/categories')).data,
   })
@@ -21,6 +21,14 @@ export function HomePage() {
         </p>
       </section>
       <h2 className="mt-10 text-lg font-semibold text-stone-800">Kategorie</h2>
+      {isError ? (
+        <p className="mt-3 text-sm text-rose-700">
+          Nie udało się wczytać kategorii.{' '}
+          <button type="button" className="underline" onClick={() => refetch()}>
+            Spróbuj ponownie
+          </button>
+        </p>
+      ) : null}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {categories.map((category) => (
           <Link

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { apiErrorMessage } from '../api/errors'
 import type { AuthResponse } from '../api/types'
 import { useAuth } from '../auth'
 
@@ -16,10 +17,14 @@ export function RegisterPage() {
     setError(null)
     try {
       const res = await api.post<AuthResponse>('/auth/register', { email, password })
-      await login(res.data.token)
+      try {
+        await login(res.data.token)
+      } catch {
+        localStorage.setItem('fachowo_token', res.data.token)
+      }
       navigate('/panel')
-    } catch {
-      setError('Nie udało się założyć konta. Sprawdź e-mail i hasło (min. 8 znaków).')
+    } catch (error) {
+      setError(apiErrorMessage(error, 'Nie udało się założyć konta. Sprawdź e-mail i hasło (min. 8 znaków).'))
     }
   }
 

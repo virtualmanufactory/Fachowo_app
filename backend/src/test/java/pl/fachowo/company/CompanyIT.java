@@ -88,7 +88,7 @@ class CompanyIT extends AbstractIT {
                         .content("""
                                 {"nip":"1234563218"}
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private String register(String email) throws Exception {
