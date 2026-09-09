@@ -51,3 +51,5 @@ Konta demo (hasło `password`):
 - `instal@demo.fachowo.pl`
 
 Weryfikacja NIP w trybie deweloperskim używa stuba (checksum NIP + dane przykładowe). API MF White List i CEIDG można włączyć w `application.yml`.
+
+Testy backendu (`mvn test` w `backend/`): jednostkowe (NIP, JWT, auth, katalog, storage) oraz integracyjne API na Postgresie i Redisie w Testcontainers.
