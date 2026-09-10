@@ -111,6 +111,15 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>stage</id>
+            <properties>
+                <spring-boot.run.profiles>stage</spring-boot.run.profiles>
+            </properties>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>

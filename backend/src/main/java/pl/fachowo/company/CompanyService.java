@@ -18,6 +18,7 @@ import pl.fachowo.company.dto.CreateServiceRequest;
 import pl.fachowo.company.dto.ImageDto;
 import pl.fachowo.company.dto.ServiceDto;
 import pl.fachowo.company.dto.UpdateCompanyRequest;
+import pl.fachowo.company.dto.UpdateServiceRequest;
 import pl.fachowo.security.UserPrincipal;
 import pl.fachowo.storage.StorageService;
 import pl.fachowo.user.User;
@@ -171,6 +172,19 @@ public class CompanyService {
         if (request.available() != null) {
             company.setAvailable(request.available());
         }
+        if (request.name() != null && !request.name().isBlank()) {
+            company.setName(request.name().trim());
+        }
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findById(request.categoryId())
+                    .orElseThrow(() -> new NotFoundException("Nie znaleziono kategorii"));
+            company.setCategory(category);
+        }
+        if (request.cityId() != null) {
+            City city = cityRepository.findById(request.cityId())
+                    .orElseThrow(() -> new NotFoundException("Nie znaleziono miasta"));
+            company.setCity(city);
+        }
         evictCompareCache();
         return toProfile(company);
     }
@@ -189,7 +203,34 @@ public class CompanyService {
         offer.setAvailable(request.available());
         serviceOfferRepository.save(offer);
         evictCompareCache();
-        return new ServiceDto(offer.getId(), offer.getName(), offer.getPrice(), offer.getUnit(), offer.isAvailable());
+        return toServiceDto(offer);
+    }
+
+    @Transactional
+    public ServiceDto updateService(
+            UUID companyId,
+            UUID serviceId,
+            UserPrincipal principal,
+            UpdateServiceRequest request
+    ) {
+        Company company = ownedCompany(companyId, principal);
+        ServiceOffer offer = serviceOfferRepository.findByIdAndCompany_Id(serviceId, company.getId())
+                .orElseThrow(() -> new NotFoundException("Nie znaleziono usługi"));
+        offer.setName(request.name());
+        offer.setPrice(request.price());
+        offer.setUnit(request.unit());
+        offer.setAvailable(request.available());
+        evictCompareCache();
+        return toServiceDto(offer);
+    }
+
+    @Transactional
+    public void deleteService(UUID companyId, UUID serviceId, UserPrincipal principal) {
+        Company company = ownedCompany(companyId, principal);
+        ServiceOffer offer = serviceOfferRepository.findByIdAndCompany_Id(serviceId, company.getId())
+                .orElseThrow(() -> new NotFoundException("Nie znaleziono usługi"));
+        serviceOfferRepository.delete(offer);
+        evictCompareCache();
     }
 
     @Transactional
@@ -205,6 +246,29 @@ public class CompanyService {
         image.setContentType(file.getContentType());
         companyImageRepository.save(image);
         return new ImageDto(image.getId(), storageService.publicUrl(key));
+    }
+
+    @Transactional
+    public ImageDto replaceImage(UUID companyId, UUID imageId, UserPrincipal principal, MultipartFile file) {
+        Company company = ownedCompany(companyId, principal);
+        CompanyImage image = companyImageRepository.findByIdAndCompany_Id(imageId, company.getId())
+                .orElseThrow(() -> new NotFoundException("Nie znaleziono zdjęcia"));
+        String previousKey = image.getObjectKey();
+        String key = storageService.uploadCompanyImage(company.getId(), file);
+        image.setObjectKey(key);
+        image.setContentType(file.getContentType());
+        storageService.deleteObject(previousKey);
+        return new ImageDto(image.getId(), storageService.publicUrl(key));
+    }
+
+    @Transactional
+    public void deleteImage(UUID companyId, UUID imageId, UserPrincipal principal) {
+        Company company = ownedCompany(companyId, principal);
+        CompanyImage image = companyImageRepository.findByIdAndCompany_Id(imageId, company.getId())
+                .orElseThrow(() -> new NotFoundException("Nie znaleziono zdjęcia"));
+        String key = image.getObjectKey();
+        companyImageRepository.delete(image);
+        storageService.deleteObject(key);
     }
 
     private Company ownedCompany(UUID companyId, UserPrincipal principal) {
@@ -231,7 +295,7 @@ public class CompanyService {
 
     private CompanyProfileDto toProfile(Company company) {
         List<ServiceDto> services = serviceOfferRepository.findByCompanyId(company.getId()).stream()
-                .map(s -> new ServiceDto(s.getId(), s.getName(), s.getPrice(), s.getUnit(), s.isAvailable()))
+                .map(CompanyService::toServiceDto)
                 .toList();
         List<ImageDto> images = companyImageRepository.findByCompanyId(company.getId()).stream()
                 .map(img -> new ImageDto(img.getId(), storageService.publicUrl(img.getObjectKey())))
@@ -242,10 +306,12 @@ public class CompanyService {
                 company.getName(),
                 company.getNip(),
                 company.getDescription(),
+                company.getCategory().getId(),
                 company.getCategory().getSlug(),
                 company.getCategory().getName(),
                 company.getCity().getVoivodeship().getSlug(),
                 company.getCity().getVoivodeship().getName(),
+                company.getCity().getId(),
                 company.getCity().getSlug(),
                 company.getCity().getName(),
                 company.getAddress(),
@@ -268,6 +334,10 @@ public class CompanyService {
         if (cache != null) {
             cache.clear();
         }
+    }
+
+    private static ServiceDto toServiceDto(ServiceOffer offer) {
+        return new ServiceDto(offer.getId(), offer.getName(), offer.getPrice(), offer.getUnit(), offer.isAvailable());
     }
 
     private static String firstNonBlank(String first, String second) {

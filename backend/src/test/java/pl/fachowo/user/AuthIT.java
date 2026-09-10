@@ -66,4 +66,48 @@ class AuthIT extends AbstractIT {
     void meRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/me")).andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void resetsPasswordWithToken() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"reset@fachowo.pl","password":"haslo1234"}
+                                """))
+                .andExpect(status().isCreated());
+
+        String forgot = mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"reset@fachowo.pl"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resetToken").isNotEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String token = com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
+                .readTree(forgot)
+                .get("resetToken").asText();
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\",\"password\":\"nowehaslo9\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"reset@fachowo.pl","password":"haslo1234"}
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"reset@fachowo.pl","password":"nowehaslo9"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
 }

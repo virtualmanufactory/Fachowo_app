@@ -11,9 +11,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import pl.fachowo.security.UserPrincipal;
 import pl.fachowo.user.dto.AuthResponse;
+import pl.fachowo.user.dto.ForgotPasswordRequest;
+import pl.fachowo.user.dto.ForgotPasswordResponse;
 import pl.fachowo.user.dto.LoginRequest;
 import pl.fachowo.user.dto.MeResponse;
 import pl.fachowo.user.dto.RegisterRequest;
+import pl.fachowo.user.dto.ResetPasswordRequest;
 
 @RestController
 @RequestMapping("/api")
@@ -34,6 +37,17 @@ public class AuthController {
     @PostMapping("/auth/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/auth/forgot-password")
+    public ForgotPasswordResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return authService.forgotPassword(request);
+    }
+
+    @PostMapping("/auth/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
     }
 
     @GetMapping("/me")

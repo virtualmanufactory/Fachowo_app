@@ -1,0 +1,9 @@
+# Lokalny tryb stage: ten sam Postgres/Redis/MinIO co profil domyślny.
+# Napełnia bazę danymi demo (idempotentnie, bez kasowania istniejących rekordów).
+spring:
+  liquibase:
+    contexts: stage
+
+app:
+  registry:
+    stub: true

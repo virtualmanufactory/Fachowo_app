@@ -30,6 +30,8 @@ class AuthServiceTest {
     @Mock
     private CompanyRepository companyRepository;
     @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtService jwtService;
@@ -38,7 +40,14 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, companyRepository, passwordEncoder, jwtService);
+        authService = new AuthService(
+                userRepository,
+                companyRepository,
+                passwordResetTokenRepository,
+                passwordEncoder,
+                jwtService,
+                true
+        );
     }
 
     @Test
@@ -74,5 +83,44 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("anna@fachowo.pl", "bad")))
                 .isInstanceOf(BadCredentialsException.class);
+    }
+
+    @Test
+    void forgotPasswordExposesTokenForKnownEmail() {
+        User user = Users.withId("anna@fachowo.pl");
+        when(userRepository.findByEmailIgnoreCase("anna@fachowo.pl")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.save(any(PasswordResetToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = authService.forgotPassword(new pl.fachowo.user.dto.ForgotPasswordRequest("anna@fachowo.pl"));
+
+        assertThat(response.resetToken()).isNotBlank();
+        assertThat(response.message()).contains("nowe hasło");
+    }
+
+    @Test
+    void forgotPasswordHidesMissingAccount() {
+        when(userRepository.findByEmailIgnoreCase("brak@fachowo.pl")).thenReturn(Optional.empty());
+
+        var response = authService.forgotPassword(new pl.fachowo.user.dto.ForgotPasswordRequest("brak@fachowo.pl"));
+
+        assertThat(response.resetToken()).isNull();
+    }
+
+    @Test
+    void resetPasswordUpdatesHash() {
+        User user = Users.withId("anna@fachowo.pl");
+        user.setPasswordHash("old");
+        String raw = "a".repeat(64);
+        PasswordResetToken token = new PasswordResetToken();
+        token.setUser(user);
+        token.setTokenHash(AuthService.sha256(raw));
+        token.setExpiresAt(java.time.Instant.now().plusSeconds(3600));
+        when(passwordResetTokenRepository.findByTokenHash(AuthService.sha256(raw))).thenReturn(Optional.of(token));
+        when(passwordEncoder.encode("nowehaslo1")).thenReturn("new-hash");
+
+        authService.resetPassword(new pl.fachowo.user.dto.ResetPasswordRequest(raw, "nowehaslo1"));
+
+        assertThat(user.getPasswordHash()).isEqualTo("new-hash");
+        assertThat(token.getUsedAt()).isNotNull();
     }
 }

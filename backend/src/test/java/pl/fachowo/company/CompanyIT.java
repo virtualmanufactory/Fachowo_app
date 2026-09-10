@@ -8,8 +8,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.fachowo.AbstractIT;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -79,6 +81,85 @@ class CompanyIT extends AbstractIT {
                                 }
                                 """))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void updatesCompanyDataAndService() throws Exception {
+        String token = register("edycja-it@fachowo.pl");
+        mockMvc.perform(post("/api/verifications/nip")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nip":"1111111111"}
+                                """))
+                .andExpect(status().isOk());
+
+        String created = mockMvc.perform(post("/api/companies")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nip":"1111111111",
+                                  "name":"Hydraulika Edycja",
+                                  "description":"Stary opis",
+                                  "categoryId":"11111111-1111-1111-1111-111111111001",
+                                  "cityId":"33333333-3333-3333-3333-333333333001",
+                                  "address":"ul. Stara 1",
+                                  "servesCustomersAtHome":false,
+                                  "phone":"600000001",
+                                  "email":"edycja-it@fachowo.pl",
+                                  "website":null,
+                                  "available":true,
+                                  "serviceName":"Wizyta",
+                                  "servicePrice":100,
+                                  "serviceUnit":"wizyta"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode profile = JSON.readTree(created);
+        String companyId = profile.get("id").asText();
+        String serviceId = profile.get("services").get(0).get("id").asText();
+
+        mockMvc.perform(put("/api/companies/" + companyId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"Hydraulika Nowa Nazwa",
+                                  "description":"Nowy opis",
+                                  "address":"ul. Nowa 2",
+                                  "phone":"600000099",
+                                  "email":"kontakt@fachowo.pl",
+                                  "website":"https://fachowo.pl",
+                                  "servesCustomersAtHome":true,
+                                  "available":false,
+                                  "categoryId":"11111111-1111-1111-1111-111111111007",
+                                  "cityId":"33333333-3333-3333-3333-333333333002"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Hydraulika Nowa Nazwa"))
+                .andExpect(jsonPath("$.description").value("Nowy opis"))
+                .andExpect(jsonPath("$.website").value("https://fachowo.pl"))
+                .andExpect(jsonPath("$.categorySlug").value("klimatyzacja"))
+                .andExpect(jsonPath("$.servesCustomersAtHome").value(true));
+
+        mockMvc.perform(put("/api/companies/" + companyId + "/services/" + serviceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Przegląd klimy","price":250,"unit":"wizyta","available":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Przegląd klimy"))
+                .andExpect(jsonPath("$.price").value(250));
+
+        mockMvc.perform(delete("/api/companies/" + companyId + "/services/" + serviceId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
     }
 
     @Test

@@ -37,10 +37,12 @@ export type CompanyProfile = {
   name: string
   nip: string
   description: string | null
+  categoryId: string
   categorySlug: string
   categoryName: string
   voivodeshipSlug: string
   voivodeshipName: string
+  cityId: string
   citySlug: string
   cityName: string
   address: string | null

@@ -9,4 +9,6 @@
     <include file="db/changelog/changes/002-seed-catalog.xml"/>
     <include file="db/changelog/changes/003-seed-demo.xml"/>
     <include file="db/changelog/changes/004-reseed-if-empty.xml"/>
+    <include file="db/changelog/changes/005-password-reset.xml"/>
+    <include file="db/changelog/changes/006-stage-seed.xml"/>
 </databaseChangeLog>

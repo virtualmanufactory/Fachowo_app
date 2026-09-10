@@ -1,35 +1,30 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { apiErrorMessage } from '../api/errors'
-import type { AuthResponse } from '../api/types'
 import { ActionButton } from '../components/ActionButton'
-import { useAuth } from '../auth'
 
 const fullButton = 'w-full rounded-lg bg-teal-700 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500'
 
-export function RegisterPage() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
+export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const [resetToken, setResetToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    setMessage(null)
+    setResetToken(null)
     setLoading(true)
     try {
-      const res = await api.post<AuthResponse>('/auth/register', { email, password })
-      try {
-        await login(res.data.token)
-      } catch {
-        localStorage.setItem('fachowo_token', res.data.token)
-      }
-      navigate('/panel')
-    } catch (error) {
-      setError(apiErrorMessage(error, 'Nie udało się założyć konta. Sprawdź e-mail i hasło (min. 8 znaków).'))
+      const res = await api.post<{ message: string; resetToken?: string }>('/auth/forgot-password', { email })
+      setMessage(res.data.message)
+      setResetToken(res.data.resetToken ?? null)
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Nie udało się wysłać prośby o reset hasła.'))
     } finally {
       setLoading(false)
     }
@@ -37,8 +32,8 @@ export function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-md rounded-xl border border-stone-200 bg-white p-6">
-      <h1 className="text-2xl font-semibold">Załóż konto</h1>
-      <p className="mt-1 text-sm text-stone-600">Potem zweryfikujesz NIP i opublikujesz bezpłatną wizytówkę.</p>
+      <h1 className="text-2xl font-semibold">Reset hasła</h1>
+      <p className="mt-1 text-sm text-stone-600">Podaj e-mail konta. Jeśli istnieje, przygotujemy link do nowego hasła.</p>
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
         <input
           className="w-full rounded-lg border border-stone-300 px-3 py-2"
@@ -48,24 +43,23 @@ export function RegisterPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <input
-          className="w-full rounded-lg border border-stone-300 px-3 py-2"
-          type="password"
-          required
-          minLength={8}
-          placeholder="Hasło (min. 8 znaków)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
-        <ActionButton className={fullButton} loading={loading} loadingLabel="Rejestrowanie…">
-          Zarejestruj się
+        {message ? <p className="text-sm text-teal-800">{message}</p> : null}
+        {resetToken ? (
+          <p className="text-sm text-stone-700">
+            Tryb lokalny:{' '}
+            <Link className="text-teal-800 underline" to={`/reset-hasla/nowe?token=${encodeURIComponent(resetToken)}`}>
+              ustaw nowe hasło
+            </Link>
+          </p>
+        ) : null}
+        <ActionButton className={fullButton} loading={loading} loadingLabel="Wysyłanie…">
+          Wyślij link
         </ActionButton>
       </form>
       <p className="mt-4 text-sm text-stone-600">
-        Masz konto?{' '}
         <Link to="/logowanie" className="text-teal-800">
-          Zaloguj się
+          Wróć do logowania
         </Link>
       </p>
     </div>

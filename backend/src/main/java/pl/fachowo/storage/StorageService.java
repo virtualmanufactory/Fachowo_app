@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -57,6 +58,17 @@ public class StorageService {
         } catch (IOException | RuntimeException ex) {
             log.error("Upload failed: {}", ex.getMessage());
             throw new IllegalStateException("Nie udało się zapisać zdjęcia");
+        }
+    }
+
+    public void deleteObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(objectKey).build());
+        } catch (RuntimeException ex) {
+            log.warn("Delete failed for {}: {}", objectKey, ex.getMessage());
         }
     }
 

@@ -2,7 +2,10 @@ import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { AuthResponse } from '../api/types'
+import { ActionButton } from '../components/ActionButton'
 import { useAuth } from '../auth'
+
+const fullButton = 'w-full rounded-lg bg-teal-700 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -10,16 +13,20 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    setLoading(true)
     try {
       const res = await api.post<AuthResponse>('/auth/login', { email, password })
       await login(res.data.token)
       navigate('/panel')
     } catch {
       setError('Nieprawidłowy e-mail lub hasło')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -44,11 +51,16 @@ export function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
-        <button type="submit" className="w-full rounded-lg bg-teal-700 py-2 font-medium text-white">
+        <ActionButton className={fullButton} loading={loading} loadingLabel="Logowanie…">
           Zaloguj się
-        </button>
+        </ActionButton>
       </form>
       <p className="mt-4 text-sm text-stone-600">
+        <Link to="/reset-hasla" className="text-teal-800">
+          Nie pamiętasz hasła?
+        </Link>
+      </p>
+      <p className="mt-2 text-sm text-stone-600">
         Nie masz konta?{' '}
         <Link to="/rejestracja" className="text-teal-800">
           Zarejestruj firmę

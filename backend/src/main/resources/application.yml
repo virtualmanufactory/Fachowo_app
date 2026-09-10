@@ -15,6 +15,7 @@ spring:
           time_zone: Europe/Warsaw
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+    contexts: default
   data:
     redis:
       host: localhost
@@ -38,6 +39,8 @@ jwt:
 app:
   cors:
     origins: http://localhost:5173
+  auth:
+    expose-reset-token: true
   registry:
     stub: true
     ceidg-token: ${CEIDG_API_TOKEN:}

@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { Category } from '../api/types'
 
 export function HomePage() {
-  const { data: categories = [], isError, refetch } = useQuery({
+  const { data: categories = [], isError, isFetching, refetch } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => (await api.get<Category[]>('/categories')).data,
   })
@@ -24,8 +24,8 @@ export function HomePage() {
       {isError ? (
         <p className="mt-3 text-sm text-rose-700">
           Nie udało się wczytać kategorii.{' '}
-          <button type="button" className="underline" onClick={() => refetch()}>
-            Spróbuj ponownie
+          <button type="button" className="underline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? 'Wysyłanie…' : 'Spróbuj ponownie'}
           </button>
         </p>
       ) : null}
