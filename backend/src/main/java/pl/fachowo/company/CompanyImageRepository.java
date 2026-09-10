@@ -7,4 +7,6 @@ import java.util.UUID;
 
 public interface CompanyImageRepository extends JpaRepository<CompanyImage, UUID> {
     List<CompanyImage> findByCompanyId(UUID companyId);
+
+    long countByCompanyId(UUID companyId);
 }

@@ -9,5 +9,7 @@ import java.util.UUID;
 public interface ServiceOfferRepository extends JpaRepository<ServiceOffer, UUID> {
     List<ServiceOffer> findByCompanyId(UUID companyId);
 
+    long countByCompanyId(UUID companyId);
+
     List<ServiceOffer> findByCompany_IdIn(Collection<UUID> companyIds);
 }

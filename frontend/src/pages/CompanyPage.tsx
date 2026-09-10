@@ -66,7 +66,7 @@ export function CompanyPage() {
         </div>
       </dl>
       {data.images.length > 0 ? (
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
           {data.images.map((image) => (
             <img key={image.id} src={image.url} alt="" className="h-40 w-full rounded-lg object-cover" />
           ))}

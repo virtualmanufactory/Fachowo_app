@@ -2,8 +2,17 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
+import { apiErrorMessage } from '../api/errors'
 import type { Category, City, CompanyProfile, RegistryCompany, Voivodeship } from '../api/types'
 import { useAuth } from '../auth'
+
+const MAX_SERVICES = 4
+const MAX_IMAGES = 4
+
+const primaryButton =
+  'rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500'
+const secondaryButton =
+  'rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500'
 
 export function PanelPage() {
   const { token, me } = useAuth()
@@ -32,6 +41,7 @@ function ExistingCompany() {
   const [message, setMessage] = useState<string | null>(null)
   const [serviceName, setServiceName] = useState('Wizyta')
   const [servicePrice, setServicePrice] = useState('100')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!data) {
@@ -63,26 +73,47 @@ function ExistingCompany() {
 
   async function addService(event: FormEvent) {
     event.preventDefault()
-    await api.post(`/companies/${company.id}/services`, {
-      name: serviceName,
-      price: Number(servicePrice),
-      unit: 'wizyta',
-      available: true,
-    })
-    await refetch()
+    setError(null)
+    if (company.services.length >= MAX_SERVICES) {
+      setError(`Możesz dodać maksymalnie ${MAX_SERVICES} usługi.`)
+      return
+    }
+    try {
+      await api.post(`/companies/${company.id}/services`, {
+        name: serviceName,
+        price: Number(servicePrice),
+        unit: 'wizyta',
+        available: true,
+      })
+      setServiceName('')
+      await refetch()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Nie udało się dodać usługi.'))
+    }
   }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+    if (company.images.length >= MAX_IMAGES) {
+      setError(`Możesz dodać maksymalnie ${MAX_IMAGES} zdjęcia.`)
+      return
+    }
     const fileInput = event.currentTarget.elements.namedItem('file') as HTMLInputElement
     const file = fileInput.files?.[0]
     if (!file) {
+      setError('Wybierz zdjęcie, zanim je dodasz.')
       return
     }
-    const form = new FormData()
-    form.append('file', file)
-    await api.post(`/companies/${company.id}/images`, form)
-    await refetch()
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      await api.post(`/companies/${company.id}/images`, form)
+      fileInput.value = ''
+      await refetch()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Nie udało się dodać zdjęcia.'))
+    }
   }
 
   return (
@@ -118,27 +149,85 @@ function ExistingCompany() {
           Dostępność (auto)
         </label>
         {message ? <p className="text-sm text-teal-800">{message}</p> : null}
-        <button className="rounded-lg bg-teal-700 px-4 py-2 text-white">Zapisz</button>
+        <button type="submit" className={primaryButton}>
+          Zapisz wizytówkę
+        </button>
       </form>
+      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       <form onSubmit={addService} className="space-y-3 rounded-xl border border-stone-200 bg-white p-5">
-        <h2 className="font-semibold">Dodaj usługę</h2>
+        <h2 className="font-semibold">
+          Usługi ({company.services.length}/{MAX_SERVICES})
+        </h2>
+        {company.services.length > 0 ? (
+          <ul className="divide-y divide-stone-200 rounded-lg border border-stone-200">
+            {company.services.map((service) => (
+              <li key={service.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                <span>{service.name}</span>
+                <span className="font-medium">
+                  {new Intl.NumberFormat('pl-PL', {
+                    style: 'currency',
+                    currency: 'PLN',
+                    maximumFractionDigits: 0,
+                  }).format(service.price)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-stone-500">Nie dodałeś jeszcze usług.</p>
+        )}
         <input
           className="w-full rounded-lg border border-stone-300 px-3 py-2"
           value={serviceName}
           onChange={(e) => setServiceName(e.target.value)}
+          placeholder="Nazwa usługi"
+          disabled={company.services.length >= MAX_SERVICES}
         />
         <input
           className="w-full rounded-lg border border-stone-300 px-3 py-2"
           type="number"
+          min="0"
           value={servicePrice}
           onChange={(e) => setServicePrice(e.target.value)}
+          placeholder="Cena (zł)"
+          disabled={company.services.length >= MAX_SERVICES}
         />
-        <button className="rounded-lg bg-stone-800 px-4 py-2 text-white">Dodaj</button>
+        <button type="submit" className={secondaryButton} disabled={company.services.length >= MAX_SERVICES}>
+          Dodaj usługę
+        </button>
+        {company.services.length >= MAX_SERVICES ? (
+          <p className="text-sm text-stone-500">Osiągnięto limit 4 usług.</p>
+        ) : null}
       </form>
       <form onSubmit={upload} className="space-y-3 rounded-xl border border-stone-200 bg-white p-5">
-        <h2 className="font-semibold">Zdjęcia</h2>
-        <input type="file" name="file" accept="image/jpeg,image/png,image/webp" />
-        <button className="rounded-lg bg-stone-800 px-4 py-2 text-white">Wyślij</button>
+        <h2 className="font-semibold">
+          Zdjęcia ({company.images.length}/{MAX_IMAGES})
+        </h2>
+        {company.images.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {company.images.map((image) => (
+              <img key={image.id} src={image.url} alt="" className="h-24 w-full rounded-lg object-cover" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-stone-500">Nie dodałeś jeszcze zdjęć.</p>
+        )}
+        <label className="block text-sm text-stone-600">
+          Wybierz plik (JPEG, PNG lub WebP)
+          <input
+            className="mt-1 block w-full text-sm"
+            type="file"
+            name="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={company.images.length >= MAX_IMAGES}
+          />
+        </label>
+        <button type="submit" className={secondaryButton} disabled={company.images.length >= MAX_IMAGES}>
+          Dodaj zdjęcie
+        </button>
+        {company.images.length >= MAX_IMAGES ? (
+          <p className="text-sm text-stone-500">Osiągnięto limit 4 zdjęć.</p>
+        ) : null}
       </form>
     </div>
   )
@@ -242,7 +331,9 @@ function CreateCompanyForm() {
             placeholder="10 cyfr"
             required
           />
-          <button className="rounded-lg bg-teal-700 px-4 py-2 text-white">Weryfikuj</button>
+          <button type="submit" className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
+            Weryfikuj NIP
+          </button>
         </div>
         {registry ? (
           <p className="mt-3 text-sm text-teal-800">
@@ -336,7 +427,9 @@ function CreateCompanyForm() {
             <input type="checkbox" checked={serves} onChange={(e) => setServes(e.target.checked)} />
             Opcja dojazdu do klienta
           </label>
-          <button className="rounded-lg bg-teal-700 px-4 py-2 text-white">Opublikuj wizytówkę</button>
+          <button type="submit" className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
+            Opublikuj wizytówkę
+          </button>
         </form>
       ) : null}
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}

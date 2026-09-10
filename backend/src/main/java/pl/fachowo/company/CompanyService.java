@@ -36,6 +36,9 @@ import java.util.UUID;
 @Service
 public class CompanyService {
 
+    static final int MAX_SERVICES = 4;
+    static final int MAX_IMAGES = 4;
+
     private final CompanyRepository companyRepository;
     private final ServiceOfferRepository serviceOfferRepository;
     private final CompanyImageRepository companyImageRepository;
@@ -175,6 +178,9 @@ public class CompanyService {
     @Transactional
     public ServiceDto addService(UUID companyId, UserPrincipal principal, CreateServiceRequest request) {
         Company company = ownedCompany(companyId, principal);
+        if (serviceOfferRepository.countByCompanyId(company.getId()) >= MAX_SERVICES) {
+            throw new BadRequestException("Możesz dodać maksymalnie " + MAX_SERVICES + " usługi");
+        }
         ServiceOffer offer = new ServiceOffer();
         offer.setCompany(company);
         offer.setName(request.name());
@@ -189,6 +195,9 @@ public class CompanyService {
     @Transactional
     public ImageDto addImage(UUID companyId, UserPrincipal principal, MultipartFile file) {
         Company company = ownedCompany(companyId, principal);
+        if (companyImageRepository.countByCompanyId(company.getId()) >= MAX_IMAGES) {
+            throw new BadRequestException("Możesz dodać maksymalnie " + MAX_IMAGES + " zdjęcia");
+        }
         String key = storageService.uploadCompanyImage(company.getId(), file);
         CompanyImage image = new CompanyImage();
         image.setCompany(company);
